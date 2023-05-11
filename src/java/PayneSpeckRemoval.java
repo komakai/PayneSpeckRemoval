@@ -68,28 +68,23 @@ public class PayneSpeckRemoval {
         Mat invMask = new Mat();
         Core.bitwise_not(mask, invMask);
 
+        Mat outputImage = new Mat();
         //apply the mask to get points not in a speck
-        Mat invMaskedImage = new Mat();
-        Core.bitwise_or(rawMat, rawMat, invMaskedImage, invMask);
+        Core.bitwise_or(rawMat, rawMat, outputImage, invMask);
 
         //replace the points in a speck by averaging the surrounding points
         Mat invMaskedImageConvolution = new Mat(), invMaskConvolution = new Mat();
         //this gives a weighted sum of data from points that are nearby a speck but outside it
-        Imgproc.filter2D(invMaskedImage, invMaskedImageConvolution, CvType.CV_16U, payneKernel);
+        Imgproc.filter2D(outputImage, invMaskedImageConvolution, CvType.CV_16U, payneKernel);
         //this gives a weighted sum of the nearby points
         Imgproc.filter2D(invMask, invMaskConvolution, CvType.CV_16U, payneKernel);
         //this gives us the "smoothed" values
         Mat smoothedData = new Mat();
         Core.divide(invMaskedImageConvolution, invMaskConvolution, smoothedData, 255.0);
 
-        //remove smoothed data that lies outside of specks
-        Mat smoothedDataMasked = new Mat();
-        Core.bitwise_or(smoothedData, smoothedData, smoothedDataMasked, mask);
-
         //combine the points that were in a speck and that were smoothed with points that were not in a speck and left as is
-        Mat outputData = new Mat();
-        Core.add(smoothedDataMasked, invMaskedImage, outputData);
-        return new Pair<>(rawMat, outputData);
+        smoothedData.copyTo(outputImage, mask);
+        return new Pair<>(rawMat, outputImage);
     }
 
     public enum Visualization {

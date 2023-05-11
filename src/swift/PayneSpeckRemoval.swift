@@ -62,27 +62,23 @@ func payneSpeckRemoval(_ fileName: String, _ rows: Int32, _ cols: Int32) -> (Mat
     let invMask = Mat()
     Core.bitwise_not(src: mask, dst: invMask)
 
+    let outputImage = Mat()
     //apply the mask to get points not in a speck
-    let invMaskedImage = Mat()
-    Core.bitwise_or(src1: rawMat, src2: rawMat, dst: invMaskedImage, mask: invMask)
+    Core.bitwise_or(src1: rawMat, src2: rawMat, dst: outputImage, mask: invMask)
 
     //replace the points in a speck by averaging the surrounding points
     let invMaskedImageConvolution = Mat(), invMaskConvolution = Mat()
     //this gives a weighted sum of points that are nearby a speck but are outside it
-    Imgproc.filter2D(src: invMaskedImage, dst: invMaskedImageConvolution, ddepth: CvType.CV_16U, kernel: payneKernel)
+    Imgproc.filter2D(src: outputImage, dst: invMaskedImageConvolution, ddepth: CvType.CV_16U, kernel: payneKernel)
     //this gives a sum of the nearby points
     Imgproc.filter2D(src: invMask, dst: invMaskConvolution, ddepth: CvType.CV_16U, kernel: payneKernel)
     let smoothedData = Mat()
     //this gives us the "smoothed" value
     Core.divide(src1: invMaskedImageConvolution, src2: invMaskConvolution, dst: smoothedData, scale: 255.0)
-
-    let smoothedDataMasked = Mat()
-    Core.bitwise_or(src1: smoothedData, src2: smoothedData, dst: smoothedDataMasked, mask: mask)
     
     //combine the points that were in a speck and that were smoothed with points that were not in a speck and left as is
-    let outputData = Mat()
-    Core.add(src1: smoothedDataMasked, src2: invMaskedImage, dst: outputData)
-    return (rawMat, outputData)
+    smoothedData.copy(to: outputImage, mask: mask)
+    return (rawMat, outputImage)
 }
 
 enum Visualization {
